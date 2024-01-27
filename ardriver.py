@@ -14,7 +14,7 @@ class ArduinoDriver:
 
         try:
             self.serial_port = serial.Serial(
-                "dev/ttyS0", baudrate=5600, timeout=1
+                "/dev/ttyAMA0", baudrate=4800, timeout=1
                 )
         except serial.serialutil.SerialException:
             self.serial_port = None
@@ -45,7 +45,7 @@ class ArduinoDriver:
         return self._serial_port
 
     @serial_port.setter
-    def serial_port(self, serial_port: serial.Serial | None):
+    def serial_port(self, serial_port: serial.Serial):
         self._serial_port = serial_port
 
     def push(self, direction: str, velocity: int) -> None:
@@ -62,7 +62,7 @@ class ArduinoDriver:
         # Представляем значения направления и скорости в битах
         direction = format(self.commands[direction], '04b')
         velocity = format(velocity // 10, '04b')
-        bin_command = direction + velocity
+        bin_command = int(direction + velocity, 2)
 
         # Отправляем на последовательный порт
         self._serial_port.write(

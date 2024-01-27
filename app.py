@@ -14,7 +14,7 @@ def getFramesGenerator():
     """ Генератор фреймов для вывода в веб-страницу"""
     while True:
         success, frame = camera.read()  # Получаем фрейм с камеры
-        if succes:
+        if success:
             # уменьшаем разрешение кадров
             frame = cv2.resize(frame, (1080, 720), interpolation=cv2.INTER_AREA)
             _, buffer = cv2.imencode('.jpg', frame)
@@ -34,7 +34,7 @@ def update_values():
     """
     Обработка обновления значений direction и progress
     """
-    direction = ''.join(((request.form['direction']).split())[-1])
+    direction = request.form['direction']
     progress = int(request.form['progress'])  # [0, 100, 10]
 
     print([direction, progress])
