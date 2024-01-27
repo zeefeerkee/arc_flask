@@ -1,5 +1,6 @@
 import json
 import re
+import serial
 
 
 class ArduinoDriver:
@@ -8,10 +9,18 @@ class ArduinoDriver:
         Инициализатор, принимает расположение файла с командами относительно
         родительской директории в формате JSON.
         """
-        if re.match(r".*\.json$", filename):
-            self._commands = self._set_commands(filename)
-            return None
-        raise TypeError("Файл должен быть в формате JSON")
+
+        self._commands = self._set_commands(filename)
+
+        try:
+            self.serial_port = serial.Serial(
+                "dev/ttyS0", baudrate=5600, timeout=1
+                )
+        except serial.serialutil.SerialException:
+            self.serial_port = None
+            print(
+                """Открыть последовательный порт не удалось.\nПопробуйте установить последовательный порт вручную"""  # noqa: E501
+                )
 
     @property
     def commands(self) -> dict:
@@ -25,13 +34,25 @@ class ArduinoDriver:
         """
         Приватный метод извлечения команд из заданных.
         """
-        with open(filename, encoding="utf-8") as file:
-            return {key: value for key, value in json.load(file).items()}
+
+        if re.match(r".*\.json$", filename):
+            with open(filename, encoding="utf-8") as file:
+                return {key: value for key, value in json.load(file).items()}
+        raise TypeError("Файл должен быть в формате JSON")
+
+    @property
+    def serial_port(self):
+        return self._serial_port
+
+    @serial_port.setter
+    def serial_port(self, serial_port: serial.Serial | None):
+        self._serial_port = serial_port
 
     def push(self, direction: str, velocity: int) -> str:
         """
-        Метод, позволяющий представить текущую команду в двочином коде.
+        Метод, отправляющий на последовательный порт команду в виде байта.
         """
+
         # Проверка входных данных на валидность
         if direction not in self.commands:
             raise KeyError("Incrorrect command.")
@@ -41,7 +62,12 @@ class ArduinoDriver:
         # Представляем значения направления и скорости в битах
         direction = format(self.commands[direction], '04b')
         velocity = format(velocity // 10, '04b')
-        return direction + velocity
+        bin_command = direction + velocity
+
+        # Отправляем на последовательный порт
+        self._serial_port.write(
+            bin_command.to_bytes(1, byteorder='big')
+            )
 
     def pull(self):
         """
