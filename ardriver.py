@@ -48,7 +48,7 @@ class ArduinoDriver:
     def serial_port(self, serial_port: serial.Serial | None):
         self._serial_port = serial_port
 
-    def push(self, direction: str, velocity: int) -> str:
+    def push(self, direction: str, velocity: int) -> None:
         """
         Метод, отправляющий на последовательный порт команду в виде байта.
         """
