@@ -14,7 +14,7 @@ class ArduinoDriver:
 
         try:
             self.serial_port = serial.Serial(
-                "/dev/ttyAMA0", baudrate=4800, timeout=1
+                "/dev/ttyUSB0", baudrate=4800, timeout=1
                 )
         except serial.serialutil.SerialException:
             self.serial_port = None
@@ -55,14 +55,15 @@ class ArduinoDriver:
 
         # Проверка входных данных на валидность
         if direction not in self.commands:
-            raise KeyError("Incrorrect command.")
+            raise KeyError("Неверная команда.")
         if velocity not in range(0, 110):
-            raise ValueError("Incrorrect velocity.")
+            raise ValueError("Неверная скорость.")
 
         # Представляем значения направления и скорости в битах
         direction = format(self.commands[direction], '04b')
         velocity = format(velocity // 10, '04b')
         bin_command = int(direction + velocity, 2)
+        print(f"Отправка на порт -> {bin_command.to_bytes(1, byteorder='big')}")
 
         # Отправляем на последовательный порт
         self._serial_port.write(

@@ -36,7 +36,7 @@ def update_values():
     """
     direction = request.form['direction']
     progress = int(request.form['progress'])  # [0, 100, 10]
-
+    motor.push(direction, progress)
     print([direction, progress])
     return 'Success'
 
