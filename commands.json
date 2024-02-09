@@ -1,8 +1,0 @@
-{
-    "FORWARD": 2,
-    "BACKWARD": 3,
-    "EXPANSION": 8,
-    "CLOSING": 12,
-    "STOP MOTORS": 0,
-    "STOP SERVO": 0
-}

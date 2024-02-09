@@ -3,23 +3,27 @@ import cv2
 import argparse
 import threading
 import ardriver
+import time
+import motors
 
 
 app = Flask(__name__)
 camera = cv2.VideoCapture(0)
-motor = ardriver.ArduinoDriver()
+driver = ardriver.Driver()
+my_motors = [motors.Motor(0), motors.Motor(1), motors.Motor(2)]
 
 
 def getFramesGenerator():
     """ Генератор фреймов для вывода в веб-страницу"""
     while True:
+        time.sleep(0.01)    # ограничение fps (если видео тупит, можно убрать)
         success, frame = camera.read()  # Получаем фрейм с камеры
         if success:
-            # уменьшаем разрешение кадров
-            frame = cv2.resize(frame, (1080, 720), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(frame, (320, 240), interpolation=cv2.INTER_AREA)
             _, buffer = cv2.imencode('.jpg', frame)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
 
 @app.route('/video_feed')
 def video_feed():
@@ -36,8 +40,24 @@ def update_values():
     """
     direction = request.form['direction']
     progress = int(request.form['progress'])  # [0, 100, 10]
-    motor.push(direction, progress)
-    print([direction, progress])
+
+    # Скоро будет вынесено в класс Control
+    if direction in ("FORWARD", "BACKWARD"):
+        for motor in my_motors:
+            motor.direction = 1 if direction in "FORWARD" else 0
+            motor.velocity = progress * 31 // 100
+
+    if "STOP" in direction:
+        for motor in my_motors:
+            motor.velocity = 0
+
+    print(f"\n\nПолучен запрос {[direction, progress]}\n")
+
+    values = [hash(motor) for motor in my_motors]
+    package = ardriver.combine_bytes(*values)
+    driver.write(package)
+
+    print(f"Отправленный пакет {package}\nПолученный пакет {driver.read}")
     return 'Success'
 
 

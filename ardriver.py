@@ -1,78 +1,38 @@
-import json
-import re
+from typing import Self
 import serial
+import struct
 
 
-class ArduinoDriver:
-    def __init__(self, filename: str = "commands.json") -> None:
-        """
-        Инициализатор, принимает расположение файла с командами относительно
-        родительской директории в формате JSON.
-        """
+class Driver:
+    _instance = None
 
-        self._commands = self._set_commands(filename)
+    def __new__(cls, *args, **kwargs) -> Self:
+        if cls._instance is None:
+            cls._instance = object.__new__(cls, *args, **kwargs)
+        return cls._instance
 
-        try:
-            self.serial_port = serial.Serial(
-                "/dev/ttyUSB0", baudrate=4800, timeout=1
-                )
-        except serial.serialutil.SerialException:
-            self.serial_port = None
-            print(
-                """Открыть последовательный порт не удалось.\nПопробуйте установить последовательный порт вручную"""  # noqa: E501
-                )
+    def __init__(self, port: str = "/dev/ttyUSB0", baudrate: int = 9600) -> None:  # noqa: E501
+        if "/dev/tty" not in port:
+            raise TypeError("Неверное имя последовательного порта")
 
-    @property
-    def commands(self) -> dict:
-        """
-        Свойство доступных команд. Только чтение.
-        """
+        self.serial_port = serial.Serial(port=port, baudrate=baudrate, timeout=1)  # noqa: E501
+        self.read  # Просёр
+        self.read  # Просёр
 
-        return self._commands
+    def __del__(self):
+        if not self.serial_port.closed:
+            self.serial_port.close()
 
-    def _set_commands(self, filename: str) -> dict:
-        """
-        Приватный метод извлечения команд из заданных.
-        """
+    def __repr_(self):
+        return f"Driver(port={self.serial_port}, baudrate={self.serial_port.baudrate})"  # noqa: E501
 
-        if re.match(r".*\.json$", filename):
-            with open(filename, encoding="utf-8") as file:
-                return {key: value for key, value in json.load(file).items()}
-        raise TypeError("Файл должен быть в формате JSON")
+    def write(self, message: bytes) -> None:
+        self.serial_port.write(message)
 
     @property
-    def serial_port(self):
-        return self._serial_port
+    def read(self) -> bytes:
+        return self.serial_port.readline()
 
-    @serial_port.setter
-    def serial_port(self, serial_port: serial.Serial):
-        self._serial_port = serial_port
 
-    def push(self, direction: str, velocity: int) -> None:
-        """
-        Метод, отправляющий на последовательный порт команду в виде байта.
-        """
-
-        # Проверка входных данных на валидность
-        if direction not in self.commands:
-            raise KeyError("Неверная команда.")
-        if velocity not in range(0, 110):
-            raise ValueError("Неверная скорость.")
-
-        # Представляем значения направления и скорости в битах
-        direction = format(self.commands[direction], '04b')
-        velocity = format(velocity // 10, '04b')
-        bin_command = int(direction + velocity, 2)
-        print(f"Отправка на порт -> {bin_command.to_bytes(1, byteorder='big')}")
-
-        # Отправляем на последовательный порт
-        self._serial_port.write(
-            bin_command.to_bytes(1, byteorder='big')
-            )
-
-    def pull(self):
-        """
-        Метод, позволяющий вытянуть информацию из ардуино.
-        В разработке...
-        """
-        pass
+def combine_bytes(*args: int) -> bytes:
+    return struct.pack(f">{len(args)}B", *args)
